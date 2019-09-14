@@ -19,6 +19,7 @@
     <div class="online-users-wrapper">
       <h3 id="online-users"></h3>
     </div>
+    <div class="whos-online-wrapper"></div>
     <div class="users-typing-wrapper"></div>
     <ul id="messages"></ul>
     <form id="chatbar" action="">
@@ -30,10 +31,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/node-uuid/1.4.8/uuid.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    var socket = io();
+    var socket = io.connect();
     var userId = uuid();
 
     $(function() {
+
       $('#chatbar').submit(function(e) {
         e.preventDefault();
         var msg = $('#m').val();
@@ -51,22 +53,44 @@
         socket.emit('user typing', { typing: userId });
       });
 
-      socket.on('chat message', function(payload) {
-        console.log(`payload gotten from socketio: ${JSON.stringify(payload)}`);
-        $('#messages').append(`<li>(${payload.userId}) \t ${payload.timestamp}: \t ${payload.message}</li>`);
+      socket.on('connect', function() {
+        console.log(socket.id);
+
+        socket.on('chat message', function(payload) {
+          $('#messages').append(`<li>(${payload.userId}) \t ${payload.timestamp}: \t ${payload.message}</li>`);
+        });
+
+        socket.on('user typing', function(e) {
+          $('.users-typing-wrapper').html('<h3 class="user-typing">User is typing...</h3>');
+          setTimeout(function() {
+            $('.user-typing').fadeOut().empty();
+          }, 3000);
+        });
+
+        socket.on('users online', function(payload) {
+          $('.online-users-wrapper h3').html(`${payload.totalUsers} users online!`);
+        });
+
+        socket.emit('user joined', {
+          socketId: socket.id,
+          userId: userId
+        });
       });
 
-      socket.on('user typing', function(e) {
-        $('.users-typing-wrapper').html('<h3 class="user-typing">User is typing...</h3>');
-        setTimeout(function() {
-          $('.user-typing').fadeOut().empty();
-        }, 5000);
+      socket.on('user left', function(payload) {
+        var userIds = payload.map(function(x) {
+          return x.userId;
+        });
+        $('.whos-online-wrapper').html(JSON.stringify(userIds));
       });
 
-      socket.on('users online', function(payload) {
-        console.log(payload);
-        $('.online-users-wrapper h3').html(`${payload.usersOnline} users online!`);
+      socket.on('user joined', function(payload) {
+        var userIds = payload.map(function(x) {
+          return x.userId;
+        });
+        $('.whos-online-wrapper').html(JSON.stringify(userIds));
       });
+
     });
   </script>
 </html>
