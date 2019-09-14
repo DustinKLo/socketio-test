@@ -1,0 +1,72 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font: 13px Helvetica, Arial; }
+      form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+      form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+      form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+      #messages { list-style-type: none; margin: 0; padding: 0; }
+      #messages li { padding: 5px 10px; }
+      #messages li:nth-child(odd) { background: #eee; }
+      .online-users-wrapper { padding: 10px 10px 10px 10px; }
+      .user-typing { padding: 5px 5px 5px 5px; }
+    </style>
+  </head>
+  <body>
+    <div class="online-users-wrapper">
+      <h3 id="online-users"></h3>
+    </div>
+    <div class="users-typing-wrapper"></div>
+    <ul id="messages"></ul>
+    <form id="chatbar" action="">
+      <input id="m" autocomplete="off" /><button>Send</button>
+    </form>
+  </body>
+
+  <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/node-uuid/1.4.8/uuid.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    var socket = io();
+    var userId = uuid();
+
+    $(function() {
+      $('#chatbar').submit(function(e) {
+        e.preventDefault();
+        var msg = $('#m').val();
+        var d = new Date();
+        socket.emit('chat message', {
+          userId: userId,
+          message: msg,
+          timestamp: d.toISOString()
+        });
+        $('#m').val('');
+        return false;
+      });
+
+      $('#m').keypress(function(e) {
+        socket.emit('user typing', { typing: userId });
+      });
+
+      socket.on('chat message', function(payload) {
+        console.log(`payload gotten from socketio: ${JSON.stringify(payload)}`);
+        $('#messages').append(`<li>(${payload.userId}) \t ${payload.timestamp}: \t ${payload.message}</li>`);
+      });
+
+      socket.on('user typing', function(e) {
+        $('.users-typing-wrapper').html('<h3 class="user-typing">User is typing...</h3>');
+        setTimeout(function() {
+          $('.user-typing').fadeOut().empty();
+        }, 5000);
+      });
+
+      socket.on('users online', function(payload) {
+        console.log(payload);
+        $('.online-users-wrapper h3').html(`${payload.usersOnline} users online!`);
+      });
+    });
+  </script>
+</html>
